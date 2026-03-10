@@ -1,0 +1,1498 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Sample Panel</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <style>
+        /* Глобальные переменные - в той же стилистике что и DAW */
+        :root {
+            --bg-primary: #0a0a0c;
+            --bg-secondary: #121214;
+            --bg-tertiary: #1a1a1f;
+            --bg-elevated: #22222a;
+            --accent-primary: #8b5cf6;
+            --accent-secondary: #a78bfa;
+            --accent-warning: #fbbf24;
+            --accent-success: #10b981;
+            --accent-danger: #ef4444;
+            --text-primary: #ffffff;
+            --text-secondary: #d1d5db;
+            --text-tertiary: #9ca3af;
+            --border-color: #2a2a33;
+            --border-hover: #3a3a48;
+            --shadow-color: rgba(0, 0, 0, 0.5);
+            --glow-color: rgba(139, 92, 246, 0.3);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+        }
+
+        body {
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            position: relative;
+        }
+
+        /* Скроллбары */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: var(--bg-secondary);
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: var(--border-color);
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--border-hover);
+        }
+
+        /* Экран авторизации - по центру */
+        .auth-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: var(--bg-primary);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 2000;
+            transition: opacity 0.3s ease, visibility 0.3s ease;
+        }
+
+        .auth-screen.hidden {
+            opacity: 0;
+            visibility: hidden;
+            pointer-events: none;
+        }
+
+        .auth-container {
+            width: 100%;
+            max-width: 400px;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 24px;
+            padding: 40px;
+            box-shadow: 0 20px 40px var(--shadow-color);
+        }
+
+        .auth-header {
+            text-align: center;
+            margin-bottom: 32px;
+        }
+
+        .auth-header i {
+            font-size: 48px;
+            color: var(--accent-primary);
+            margin-bottom: 16px;
+        }
+
+        .auth-header h1 {
+            font-size: 24px;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 8px;
+        }
+
+        .auth-header p {
+            color: var(--text-tertiary);
+            font-size: 14px;
+        }
+
+        .auth-form {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .auth-input-group {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .auth-input-group label {
+            font-size: 12px;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .auth-input {
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 14px 16px;
+            color: var(--text-primary);
+            font-size: 14px;
+            transition: all 0.2s ease;
+        }
+
+        .auth-input:focus {
+            outline: none;
+            border-color: var(--accent-primary);
+            box-shadow: 0 0 0 3px var(--glow-color);
+        }
+
+        .auth-input::placeholder {
+            color: var(--text-tertiary);
+        }
+
+        .auth-button {
+            background: var(--accent-primary);
+            border: none;
+            border-radius: 12px;
+            padding: 14px;
+            color: var(--text-primary);
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            margin-top: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .auth-button:hover {
+            background: #9f7aea;
+            transform: translateY(-2px);
+            box-shadow: 0 8px 16px var(--glow-color);
+        }
+
+        .auth-error {
+            color: var(--accent-danger);
+            font-size: 13px;
+            text-align: center;
+            margin-top: 16px;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+        }
+
+        .auth-error.show {
+            display: flex;
+        }
+
+        /* Основной интерфейс */
+        .admin-interface {
+            width: 100%;
+            max-width: 1400px;
+            display: none;
+            flex-direction: column;
+            gap: 20px;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .admin-interface.show {
+            display: flex;
+            opacity: 1;
+        }
+
+        /* Хедер */
+        .admin-header {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            padding: 20px 24px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 20px;
+        }
+
+        .admin-header h1 {
+            font-size: 20px;
+            font-weight: 600;
+            color: var(--text-primary);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .admin-header h1 i {
+            color: var(--accent-primary);
+            font-size: 24px;
+        }
+
+        .admin-header-right {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .github-status {
+            padding: 8px 16px;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            border-radius: 30px;
+            font-size: 13px;
+            color: var(--text-secondary);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .github-status.connected {
+            border-color: var(--accent-success);
+            color: var(--accent-success);
+        }
+
+        .user-menu {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 8px 16px;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            border-radius: 30px;
+        }
+
+        .user-menu i {
+            color: var(--accent-primary);
+        }
+
+        .user-menu span {
+            color: var(--text-secondary);
+            font-size: 13px;
+        }
+
+        .logout-btn {
+            background: transparent;
+            border: none;
+            color: var(--text-tertiary);
+            cursor: pointer;
+            font-size: 13px;
+            padding: 4px 8px;
+            border-radius: 20px;
+            transition: all 0.2s ease;
+        }
+
+        .logout-btn:hover {
+            color: var(--accent-danger);
+            background: rgba(239, 68, 68, 0.1);
+        }
+
+        /* Основная сетка */
+        .admin-grid {
+            display: grid;
+            grid-template-columns: 320px 1fr;
+            gap: 20px;
+        }
+
+        /* Левая панель */
+        .left-panel {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            overflow: hidden;
+        }
+
+        .panel-section {
+            padding: 20px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .panel-section:last-child {
+            border-bottom: none;
+        }
+
+        .section-title {
+            font-size: 13px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--text-secondary);
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .section-title i {
+            color: var(--accent-primary);
+        }
+
+        /* GitHub настройки */
+        .github-settings {
+            background: var(--bg-tertiary);
+            border-radius: 12px;
+            padding: 16px;
+        }
+
+        .form-group {
+            margin-bottom: 16px;
+        }
+
+        .form-group label {
+            display: block;
+            font-size: 11px;
+            color: var(--text-tertiary);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 6px;
+        }
+
+        .form-control {
+            width: 100%;
+            padding: 10px 12px;
+            background: var(--bg-elevated);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            color: var(--text-primary);
+            font-size: 13px;
+            transition: all 0.2s ease;
+        }
+
+        .form-control:focus {
+            outline: none;
+            border-color: var(--accent-primary);
+            box-shadow: 0 0 0 2px var(--glow-color);
+        }
+
+        .form-hint {
+            font-size: 10px;
+            color: var(--text-tertiary);
+            margin-top: 4px;
+        }
+
+        .btn {
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            color: var(--text-secondary);
+            padding: 10px 16px;
+            border-radius: 30px;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 500;
+            transition: all 0.2s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            white-space: nowrap;
+        }
+
+        .btn:hover {
+            background: var(--bg-elevated);
+            border-color: var(--accent-primary);
+            color: var(--text-primary);
+        }
+
+        .btn-primary {
+            background: var(--accent-primary);
+            border-color: var(--accent-primary);
+            color: var(--text-primary);
+        }
+
+        .btn-primary:hover {
+            background: #9f7aea;
+            border-color: #9f7aea;
+        }
+
+        .btn-success {
+            background: var(--accent-success);
+            border-color: var(--accent-success);
+            color: var(--text-primary);
+        }
+
+        .btn-success:hover {
+            background: #34d399;
+            border-color: #34d399;
+        }
+
+        .btn-danger {
+            background: transparent;
+            border-color: var(--accent-danger);
+            color: var(--accent-danger);
+        }
+
+        .btn-danger:hover {
+            background: var(--accent-danger);
+            color: var(--text-primary);
+        }
+
+        .btn-full {
+            width: 100%;
+            justify-content: center;
+        }
+
+        /* Список папок */
+        .folder-list {
+            max-height: 300px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .folder-item {
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            padding: 12px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .folder-item:hover {
+            background: var(--bg-elevated);
+            border-color: var(--accent-primary);
+        }
+
+        .folder-item.active {
+            border-color: var(--accent-primary);
+            background: rgba(139, 92, 246, 0.1);
+        }
+
+        .folder-icon {
+            color: var(--accent-warning);
+            font-size: 16px;
+        }
+
+        .folder-name {
+            flex: 1;
+            font-size: 13px;
+            color: var(--text-secondary);
+        }
+
+        .folder-item.active .folder-name {
+            color: var(--text-primary);
+        }
+
+        /* Правая панель */
+        .right-panel {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            overflow: hidden;
+        }
+
+        .samples-header {
+            padding: 20px;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 16px;
+        }
+
+        .current-folder {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .current-folder i {
+            color: var(--accent-warning);
+            font-size: 20px;
+        }
+
+        .current-folder span {
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .upload-area {
+            padding: 20px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .upload-box {
+            background: var(--bg-tertiary);
+            border: 2px dashed var(--border-color);
+            border-radius: 12px;
+            padding: 30px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .upload-box:hover {
+            border-color: var(--accent-primary);
+            background: var(--bg-elevated);
+        }
+
+        .upload-box i {
+            font-size: 40px;
+            color: var(--accent-primary);
+            margin-bottom: 12px;
+        }
+
+        .upload-box p {
+            color: var(--text-secondary);
+            font-size: 14px;
+            margin-bottom: 8px;
+        }
+
+        .upload-box small {
+            color: var(--text-tertiary);
+            font-size: 12px;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 4px;
+            background: var(--bg-tertiary);
+            border-radius: 2px;
+            margin-top: 16px;
+            overflow: hidden;
+            display: none;
+        }
+
+        .progress-bar.show {
+            display: block;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: var(--accent-primary);
+            width: 0%;
+            transition: width 0.3s ease;
+        }
+
+        /* Сетка сэмплов */
+        .samples-grid {
+            padding: 20px;
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 16px;
+            max-height: 500px;
+            overflow-y: auto;
+        }
+
+        .sample-card {
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 16px;
+            transition: all 0.2s ease;
+        }
+
+        .sample-card:hover {
+            border-color: var(--accent-primary);
+            transform: translateY(-2px);
+            box-shadow: 0 8px 16px var(--shadow-color);
+        }
+
+        .sample-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 12px;
+        }
+
+        .sample-header i {
+            color: var(--accent-primary);
+            font-size: 16px;
+        }
+
+        .sample-name {
+            flex: 1;
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--text-primary);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .sample-url {
+            background: var(--bg-elevated);
+            border-radius: 8px;
+            padding: 10px;
+            font-size: 11px;
+            color: var(--accent-secondary);
+            word-break: break-all;
+            margin-bottom: 12px;
+            border: 1px solid var(--border-color);
+        }
+
+        .sample-actions {
+            display: flex;
+            gap: 8px;
+        }
+
+        .copy-btn {
+            flex: 1;
+            background: var(--bg-elevated);
+            border: 1px solid var(--border-color);
+            color: var(--text-secondary);
+            padding: 8px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            transition: all 0.2s ease;
+        }
+
+        .copy-btn:hover {
+            background: var(--accent-primary);
+            border-color: var(--accent-primary);
+            color: var(--text-primary);
+        }
+
+        /* Модальные окна */
+        .modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(4px);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 3000;
+        }
+
+        .modal.show {
+            display: flex;
+        }
+
+        .modal-content {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 24px;
+            padding: 32px;
+            width: 400px;
+            max-width: 90%;
+        }
+
+        .modal-content h3 {
+            font-size: 18px;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .modal-content h3 i {
+            color: var(--accent-primary);
+        }
+
+        .modal-actions {
+            display: flex;
+            gap: 12px;
+            margin-top: 24px;
+        }
+
+        /* Уведомления */
+        .toast {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--accent-success);
+            border-radius: 12px;
+            padding: 12px 24px;
+            color: var(--text-primary);
+            font-size: 14px;
+            display: none;
+            align-items: center;
+            gap: 10px;
+            z-index: 4000;
+            box-shadow: 0 8px 16px var(--shadow-color);
+        }
+
+        .toast.show {
+            display: flex;
+        }
+
+        .toast i {
+            color: var(--accent-success);
+        }
+
+        .toast.error {
+            border-color: var(--accent-danger);
+        }
+
+        .toast.error i {
+            color: var(--accent-danger);
+        }
+
+        /* Инструкция */
+        .info-section {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            padding: 20px;
+        }
+
+        .info-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text-secondary);
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .info-title i {
+            color: var(--accent-primary);
+        }
+
+        .info-list {
+            list-style: none;
+            padding: 0;
+        }
+
+        .info-list li {
+            color: var(--text-tertiary);
+            font-size: 13px;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .info-list li i {
+            color: var(--accent-warning);
+            font-size: 12px;
+        }
+
+        .info-list code {
+            background: var(--bg-tertiary);
+            padding: 4px 8px;
+            border-radius: 6px;
+            font-size: 12px;
+            color: var(--accent-secondary);
+        }
+
+        .warning-box {
+            background: rgba(251, 191, 36, 0.1);
+            border: 1px solid var(--accent-warning);
+            border-radius: 8px;
+            padding: 12px;
+            margin-top: 16px;
+            color: var(--text-secondary);
+            font-size: 13px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .warning-box i {
+            color: var(--accent-warning);
+        }
+    </style>
+</head>
+<body>
+    <!-- Экран авторизации -->
+    <div class="auth-screen" id="authScreen">
+        <div class="auth-container">
+            <div class="auth-header">
+                <i class="fas fa-lock"></i>
+                <h1>Admin Access</h1>
+                <p>Введите пароль для доступа к панели управления</p>
+            </div>
+            <div class="auth-form">
+                <div class="auth-input-group">
+                    <label>Пароль</label>
+                    <input type="password" class="auth-input" id="passwordInput" placeholder="••••••••" autofocus>
+                </div>
+                <button class="auth-button" id="loginBtn">
+                    <i class="fas fa-sign-in-alt"></i> Войти
+                </button>
+                <div class="auth-error" id="authError">
+                    <i class="fas fa-exclamation-circle"></i> Неверный пароль
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Основной интерфейс -->
+    <div class="admin-interface" id="adminInterface">
+        <!-- Хедер -->
+        <div class="admin-header">
+            <h1>
+                <i class="fab fa-github"></i>
+                Admin Sample Panel
+            </h1>
+            <div class="admin-header-right">
+                <div class="github-status" id="githubStatus">
+                    <i class="fas fa-plug"></i>
+                    <span>Не подключено</span>
+                </div>
+                <div class="user-menu">
+                    <i class="fas fa-user-shield"></i>
+                    <span>Admin</span>
+                    <button class="logout-btn" id="logoutBtn" title="Сменить пароль">
+                        <i class="fas fa-key"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Основная сетка -->
+        <div class="admin-grid">
+            <!-- Левая панель -->
+            <div class="left-panel">
+                <!-- GitHub настройки -->
+                <div class="panel-section">
+                    <div class="section-title">
+                        <i class="fab fa-github"></i>
+                        GitHub CONNECTION
+                    </div>
+                    <div class="github-settings">
+                        <div class="form-group">
+                            <label>Token</label>
+                            <input type="password" class="form-control" id="githubToken" placeholder="ghp_xxxxxxxxxxxx">
+                            <div class="form-hint">Settings → Developer settings → Personal access tokens</div>
+                        </div>
+                        <div class="form-group">
+                            <label>Владелец</label>
+                            <input type="text" class="form-control" id="repoOwner" placeholder="username">
+                        </div>
+                        <div class="form-group">
+                            <label>Репозиторий</label>
+                            <input type="text" class="form-control" id="repoName" placeholder="samples">
+                        </div>
+                        <div class="form-group">
+                            <label>Ветка</label>
+                            <input type="text" class="form-control" id="repoBranch" value="main">
+                        </div>
+                        <button class="btn btn-primary btn-full" id="connectGitHub">
+                            <i class="fas fa-plug"></i> Подключиться
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Папки -->
+                <div class="panel-section">
+                    <div class="section-title">
+                        <i class="fas fa-folder-tree"></i>
+                        Папки
+                    </div>
+                    <button class="btn btn-primary btn-full" id="newFolderBtn" style="margin-bottom: 16px;">
+                        <i class="fas fa-plus"></i> Создать папку
+                    </button>
+                    <div class="folder-list" id="folderList"></div>
+                </div>
+
+                <!-- CDN URL -->
+                <div class="panel-section">
+                    <div class="section-title">
+                        <i class="fas fa-link"></i>
+                        Raw CDN URL
+                    </div>
+                    <div class="form-group">
+                        <input type="text" class="form-control" id="cdnUrl" readonly value="https://raw.githubusercontent.com/">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Правая панель -->
+            <div class="right-panel">
+                <!-- Заголовок сэмплов -->
+                <div class="samples-header">
+                    <div class="current-folder">
+                        <i class="fas fa-folder-open"></i>
+                        <span id="currentFolderName">Все сэмплы</span>
+                    </div>
+                    <button class="btn" id="refreshSamples">
+                        <i class="fas fa-sync-alt"></i> Обновить
+                    </button>
+                </div>
+
+                <!-- Область загрузки -->
+                <div class="upload-area">
+                    <div class="upload-box" id="uploadBox">
+                        <i class="fas fa-cloud-upload-alt"></i>
+                        <p>Перетащите файлы или нажмите для выбора</p>
+                        <small>Поддерживаются WAV, MP3, OGG, FLAC</small>
+                        <input type="file" id="fileInput" multiple accept="audio/*" style="display: none;">
+                    </div>
+                    <div class="progress-bar" id="progressBar">
+                        <div class="progress-fill" id="progressFill"></div>
+                    </div>
+                </div>
+
+                <!-- Сетка сэмплов -->
+                <div class="samples-grid" id="samplesGrid"></div>
+            </div>
+        </div>
+
+        <!-- Инструкция -->
+        <div class="info-section">
+            <div class="warning-box">
+                <i class="fas fa-exclamation-triangle"></i>
+                <div>
+                    <strong></strong> Файлы доступны по ссылкам:<br>
+                    <code>https://raw.githubusercontent.com/username/repo/branch/folder/file.wav</code>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Модальное окно для создания папки -->
+    <div class="modal" id="folderModal">
+        <div class="modal-content">
+            <h3>
+                <i class="fas fa-folder-plus"></i>
+                Новая папка
+            </h3>
+            <div class="form-group">
+                <label>Название папки</label>
+                <input type="text" class="form-control" id="folderName" placeholder="например: piano">
+            </div>
+            <div class="modal-actions">
+                <button class="btn btn-primary" id="createFolderBtn" style="flex: 2;">
+                    <i class="fas fa-check"></i> Создать
+                </button>
+                <button class="btn" id="cancelFolderBtn" style="flex: 1;">
+                    <i class="fas fa-times"></i> Отмена
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Модальное окно смены пароля -->
+    <div class="modal" id="passwordModal">
+        <div class="modal-content">
+            <h3>
+                <i class="fas fa-key"></i>
+                Смена пароля
+            </h3>
+            <div class="form-group">
+                <label>Текущий пароль</label>
+                <input type="password" class="form-control" id="currentPassword" placeholder="••••••••">
+            </div>
+            <div class="form-group">
+                <label>Новый пароль</label>
+                <input type="password" class="form-control" id="newPassword" placeholder="••••••••">
+            </div>
+            <div class="form-group">
+                <label>Подтверждение</label>
+                <input type="password" class="form-control" id="confirmPassword" placeholder="••••••••">
+            </div>
+            <div class="modal-actions">
+                <button class="btn btn-primary" id="changePasswordBtn" style="flex: 2;">
+                    <i class="fas fa-save"></i> Сохранить
+                </button>
+                <button class="btn" id="cancelPasswordBtn" style="flex: 1;">
+                    <i class="fas fa-times"></i> Отмена
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Уведомление -->
+    <div class="toast" id="toast">
+        <i class="fas fa-check-circle"></i>
+        <span id="toastMessage">Ссылка скопирована!</span>
+    </div>
+
+    <script>
+    (function() {
+        // ------------------------------ ПЕРЕМЕННЫЕ ------------------------------
+        // Пароль по умолчанию
+        const DEFAULT_PASSWORD = 'admin123';
+        let currentPassword = localStorage.getItem('adminPassword') || DEFAULT_PASSWORD;
+
+        // GitHub настройки
+        let githubToken = '';
+        let repoOwner = '';
+        let repoName = '';
+        let repoBranch = 'main';
+        let currentFolder = '';
+        let folders = [];
+        let files = [];
+        let isConnected = false;
+
+        // DOM элементы
+        const authScreen = document.getElementById('authScreen');
+        const adminInterface = document.getElementById('adminInterface');
+        const passwordInput = document.getElementById('passwordInput');
+        const loginBtn = document.getElementById('loginBtn');
+        const authError = document.getElementById('authError');
+        const logoutBtn = document.getElementById('logoutBtn');
+
+        const githubStatus = document.getElementById('githubStatus');
+        const folderList = document.getElementById('folderList');
+        const samplesGrid = document.getElementById('samplesGrid');
+        const currentFolderName = document.getElementById('currentFolderName');
+        const uploadBox = document.getElementById('uploadBox');
+        const fileInput = document.getElementById('fileInput');
+        const folderModal = document.getElementById('folderModal');
+        const passwordModal = document.getElementById('passwordModal');
+        const folderNameInput = document.getElementById('folderName');
+        const cdnUrl = document.getElementById('cdnUrl');
+        const toast = document.getElementById('toast');
+        const toastMessage = document.getElementById('toastMessage');
+        const progressBar = document.getElementById('progressBar');
+        const progressFill = document.getElementById('progressFill');
+
+        // Поля смены пароля
+        const currentPasswordInput = document.getElementById('currentPassword');
+        const newPasswordInput = document.getElementById('newPassword');
+        const confirmPasswordInput = document.getElementById('confirmPassword');
+        const changePasswordBtn = document.getElementById('changePasswordBtn');
+        const cancelPasswordBtn = document.getElementById('cancelPasswordBtn');
+
+        // ------------------------------ АВТОРИЗАЦИЯ ------------------------------
+        // Проверяем, залогинен ли пользователь
+        function checkAuth() {
+            const isLoggedIn = localStorage.getItem('isLoggedIn') === 'true';
+            if (isLoggedIn) {
+                authScreen.classList.add('hidden');
+                adminInterface.classList.add('show');
+                // Загружаем настройки после входа
+                loadSettings();
+            } else {
+                authScreen.classList.remove('hidden');
+                adminInterface.classList.remove('show');
+            }
+        }
+
+        // Вход
+        loginBtn.addEventListener('click', () => {
+            const enteredPassword = passwordInput.value;
+            if (enteredPassword === currentPassword) {
+                localStorage.setItem('isLoggedIn', 'true');
+                authScreen.classList.add('hidden');
+                adminInterface.classList.add('show');
+                authError.classList.remove('show');
+                passwordInput.value = '';
+
+                // Загружаем настройки после входа
+                loadSettings();
+            } else {
+                authError.classList.add('show');
+            }
+        });
+
+        // Вход по Enter
+        passwordInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                loginBtn.click();
+            }
+        });
+
+        // Смена пароля
+        logoutBtn.addEventListener('click', () => {
+            passwordModal.classList.add('show');
+        });
+
+        changePasswordBtn.addEventListener('click', () => {
+            const current = currentPasswordInput.value;
+            const newPass = newPasswordInput.value;
+            const confirm = confirmPasswordInput.value;
+
+            if (current !== currentPassword) {
+                showToast('Неверный текущий пароль', 'error');
+                return;
+            }
+
+            if (newPass.length < 6) {
+                showToast('Пароль должен быть не менее 6 символов', 'error');
+                return;
+            }
+
+            if (newPass !== confirm) {
+                showToast('Пароли не совпадают', 'error');
+                return;
+            }
+
+            // Сохраняем новый пароль
+            currentPassword = newPass;
+            localStorage.setItem('adminPassword', newPass);
+
+            // Очищаем поля
+            currentPasswordInput.value = '';
+            newPasswordInput.value = '';
+            confirmPasswordInput.value = '';
+
+            passwordModal.classList.remove('show');
+            showToast('Пароль успешно изменен');
+        });
+
+        cancelPasswordBtn.addEventListener('click', () => {
+            passwordModal.classList.remove('show');
+            currentPasswordInput.value = '';
+            newPasswordInput.value = '';
+            confirmPasswordInput.value = '';
+        });
+
+        // Закрытие модальных окон по клику вне
+        window.addEventListener('click', (e) => {
+            if (e.target === folderModal) {
+                folderModal.classList.remove('show');
+            }
+            if (e.target === passwordModal) {
+                passwordModal.classList.remove('show');
+            }
+        });
+
+        // ------------------------------ УВЕДОМЛЕНИЯ ------------------------------
+        function showToast(message, type = 'success') {
+            toastMessage.textContent = message;
+            toast.className = 'toast show';
+            if (type === 'error') {
+                toast.classList.add('error');
+            }
+            setTimeout(() => {
+                toast.classList.remove('show');
+                toast.classList.remove('error');
+            }, 3000);
+        }
+
+        // ------------------------------ GitHub НАСТРОЙКИ ------------------------------
+        function loadSettings() {
+            githubToken = localStorage.getItem('githubToken') || '';
+            repoOwner = localStorage.getItem('repoOwner') || '';
+            repoName = localStorage.getItem('repoName') || '';
+            repoBranch = localStorage.getItem('repoBranch') || 'main';
+
+            document.getElementById('githubToken').value = githubToken;
+            document.getElementById('repoOwner').value = repoOwner;
+            document.getElementById('repoName').value = repoName;
+            document.getElementById('repoBranch').value = repoBranch;
+
+            updateCdnUrl();
+
+            if (githubToken && repoOwner && repoName) {
+                testConnection();
+            }
+        }
+
+        function updateCdnUrl() {
+            cdnUrl.value = `https://raw.githubusercontent.com/${repoOwner}/${repoName}/${repoBranch}/`;
+        }
+
+        async function githubRequest(endpoint, options = {}) {
+            const url = `https://api.github.com${endpoint}`;
+            const headers = {
+                'Authorization': `token ${githubToken}`,
+                'Accept': 'application/vnd.github.v3+json',
+                ...options.headers
+            };
+
+            const response = await fetch(url, {
+                ...options,
+                headers
+            });
+
+            if (!response.ok) {
+                const error = await response.json();
+                throw new Error(error.message || 'GitHub API error');
+            }
+
+            return response.json();
+        }
+
+        async function testConnection() {
+            try {
+                await githubRequest(`/repos/${repoOwner}/${repoName}`);
+                isConnected = true;
+                githubStatus.innerHTML = '<i class="fas fa-check-circle"></i><span>Подключено к GitHub</span>';
+                githubStatus.className = 'github-status connected';
+                loadFolders();
+                loadFiles();
+            } catch (e) {
+                isConnected = false;
+                githubStatus.innerHTML = '<i class="fas fa-plug"></i><span>Ошибка подключения</span>';
+                githubStatus.className = 'github-status';
+                console.error('GitHub connection error:', e);
+            }
+        }
+
+        document.getElementById('connectGitHub').addEventListener('click', () => {
+            githubToken = document.getElementById('githubToken').value;
+            repoOwner = document.getElementById('repoOwner').value;
+            repoName = document.getElementById('repoName').value;
+            repoBranch = document.getElementById('repoBranch').value;
+
+            localStorage.setItem('githubToken', githubToken);
+            localStorage.setItem('repoOwner', repoOwner);
+            localStorage.setItem('repoName', repoName);
+            localStorage.setItem('repoBranch', repoBranch);
+
+            updateCdnUrl();
+            testConnection();
+        });
+
+        // ------------------------------ ПАПКИ ------------------------------
+        async function loadFolders() {
+            if (!isConnected) return;
+
+            try {
+                const contents = await githubRequest(`/repos/${repoOwner}/${repoName}/contents/`);
+                folders = contents
+                    .filter(item => item.type === 'dir')
+                    .map(item => item.name);
+                renderFolders();
+            } catch (e) {
+                console.error('Error loading folders:', e);
+            }
+        }
+
+        function renderFolders() {
+            folderList.innerHTML = '';
+
+            // Папка "Все сэмплы"
+            const allFolder = document.createElement('div');
+            allFolder.className = `folder-item ${currentFolder === '' ? 'active' : ''}`;
+            allFolder.innerHTML = `
+                <i class="fas fa-database folder-icon"></i>
+                <span class="folder-name">Все сэмплы</span>
+            `;
+            allFolder.addEventListener('click', () => {
+                currentFolder = '';
+                renderFolders();
+                loadFiles();
+                currentFolderName.textContent = 'Все сэмплы';
+            });
+            folderList.appendChild(allFolder);
+
+            // Папки из репозитория
+            folders.forEach(folder => {
+                const div = document.createElement('div');
+                div.className = `folder-item ${currentFolder === folder ? 'active' : ''}`;
+                div.innerHTML = `
+                    <i class="fas fa-folder folder-icon"></i>
+                    <span class="folder-name">${folder}</span>
+                `;
+                div.addEventListener('click', () => {
+                    currentFolder = folder;
+                    renderFolders();
+                    loadFiles();
+                    currentFolderName.textContent = folder;
+                });
+                folderList.appendChild(div);
+            });
+        }
+
+        document.getElementById('newFolderBtn').addEventListener('click', () => {
+            if (!isConnected) {
+                showToast('Сначала подключитесь к GitHub', 'error');
+                return;
+            }
+            folderModal.classList.add('show');
+        });
+
+        document.getElementById('cancelFolderBtn').addEventListener('click', () => {
+            folderModal.classList.remove('show');
+            folderNameInput.value = '';
+        });
+
+        document.getElementById('createFolderBtn').addEventListener('click', async () => {
+            const folderName = folderNameInput.value.trim();
+            if (!folderName) {
+                showToast('Введите название папки', 'error');
+                return;
+            }
+
+            try {
+                const content = btoa(''); // пустой файл
+
+                await githubRequest(`/repos/${repoOwner}/${repoName}/contents/${folderName}/.gitkeep`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        message: `Create folder ${folderName}`,
+                        content: content,
+                        branch: repoBranch
+                    })
+                });
+
+                folderModal.classList.remove('show');
+                folderNameInput.value = '';
+                await loadFolders();
+                showToast('Папка создана!');
+            } catch (e) {
+                showToast('Ошибка при создании папки: ' + e.message, 'error');
+            }
+        });
+
+        // ------------------------------ ФАЙЛЫ ------------------------------
+        async function loadFiles() {
+            if (!isConnected) return;
+
+            try {
+                let path = '';
+                if (currentFolder) {
+                    path = `/${currentFolder}`;
+                }
+
+                const contents = await githubRequest(`/repos/${repoOwner}/${repoName}/contents${path}`);
+                files = contents.filter(item =>
+                    item.type === 'file' &&
+                    item.name.match(/\.(wav|mp3|ogg|aif|flac)$/i)
+                );
+                renderFiles();
+            } catch (e) {
+                console.error('Error loading files:', e);
+            }
+        }
+
+        function renderFiles() {
+            if (files.length === 0) {
+                samplesGrid.innerHTML = `
+                    <div style="grid-column:1/-1; text-align:center; padding:40px;">
+                        <i class="fas fa-music" style="font-size:40px; color: var(--text-tertiary); margin-bottom:16px;"></i>
+                        <p style="color: var(--text-tertiary);">Нет сэмплов в этой папке</p>
+                    </div>
+                `;
+                return;
+            }
+
+            samplesGrid.innerHTML = '';
+            files.forEach(file => {
+                const card = document.createElement('div');
+                card.className = 'sample-card';
+
+                const rawUrl = `https://raw.githubusercontent.com/${repoOwner}/${repoName}/${repoBranch}/${file.path}`;
+
+                card.innerHTML = `
+                    <div class="sample-header">
+                        <i class="fas fa-file-audio"></i>
+                        <span class="sample-name">${file.name}</span>
+                    </div>
+                    <div class="sample-url">${rawUrl}</div>
+                    <div class="sample-actions">
+                        <button class="copy-btn" data-url="${rawUrl}">
+                            <i class="fas fa-copy"></i> Копировать
+                        </button>
+                    </div>
+                `;
+                samplesGrid.appendChild(card);
+            });
+
+            document.querySelectorAll('.copy-btn').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    const url = e.currentTarget.dataset.url;
+                    navigator.clipboard.writeText(url).then(() => {
+                        showToast('Ссылка скопирована!');
+                    });
+                });
+            });
+        }
+
+        document.getElementById('refreshSamples').addEventListener('click', () => {
+            loadFiles();
+        });
+
+        // ------------------------------ ЗАГРУЗКА ФАЙЛОВ ------------------------------
+        uploadBox.addEventListener('click', () => {
+            if (!isConnected) {
+                showToast('Сначала подключитесь к GitHub', 'error');
+                return;
+            }
+            if (!currentFolder) {
+                showToast('Выберите папку', 'error');
+                return;
+            }
+            fileInput.click();
+        });
+
+        uploadBox.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadBox.style.borderColor = 'var(--accent-primary)';
+        });
+
+        uploadBox.addEventListener('dragleave', () => {
+            uploadBox.style.borderColor = 'var(--border-color)';
+        });
+
+        uploadBox.addEventListener('drop', async (e) => {
+            e.preventDefault();
+            uploadBox.style.borderColor = 'var(--border-color)';
+
+            if (!isConnected) {
+                showToast('Сначала подключитесь к GitHub', 'error');
+                return;
+            }
+            if (!currentFolder) {
+                showToast('Выберите папку', 'error');
+                return;
+            }
+
+            const files = Array.from(e.dataTransfer.files);
+            await uploadFiles(files);
+        });
+
+        fileInput.addEventListener('change', async (e) => {
+            await uploadFiles(Array.from(e.target.files));
+            fileInput.value = '';
+        });
+
+        async function uploadFiles(files) {
+            progressBar.classList.add('show');
+
+            for (let i = 0; i < files.length; i++) {
+                const file = files[i];
+                progressFill.style.width = `${(i / files.length) * 100}%`;
+
+                try {
+                    const reader = new FileReader();
+                    const content = await new Promise((resolve) => {
+                        reader.onload = () => resolve(reader.result.split(',')[1]);
+                        reader.readAsDataURL(file);
+                    });
+
+                    await githubRequest(`/repos/${repoOwner}/${repoName}/contents/${currentFolder}/${file.name}`, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            message: `Upload ${file.name}`,
+                            content: content,
+                            branch: repoBranch
+                        })
+                    });
+
+                } catch (e) {
+                    showToast(`Ошибка при загрузке ${file.name}: ${e.message}`, 'error');
+                }
+            }
+
+            progressFill.style.width = '100%';
+            setTimeout(() => {
+                progressBar.classList.remove('show');
+                progressFill.style.width = '0%';
+            }, 1000);
+
+            await loadFiles();
+            showToast('Файлы загружены!');
+        }
+
+        // ------------------------------ ЗАПУСК ------------------------------
+        checkAuth();
+    })();
+    </script>
+</body>
+</html>
