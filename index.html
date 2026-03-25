@@ -7,7 +7,6 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <style>
-        /* Глобальные переменные - в той же стилистике что и DAW */
         :root {
             --bg-primary: #0a0a0c;
             --bg-secondary: #121214;
@@ -57,14 +56,14 @@
 
         ::-webkit-scrollbar-thumb {
             background: var(--border-color);
-            border-radius: 4px;
+            border-radius: 2px;
         }
 
         ::-webkit-scrollbar-thumb:hover {
             background: var(--border-hover);
         }
 
-        /* Экран авторизации - по центру */
+        /* Экран ввода пароля */
         .auth-screen {
             position: fixed;
             top: 0;
@@ -211,7 +210,7 @@
             opacity: 1;
         }
 
-        /* Хедер */
+        /* Шапка */
         .admin-header {
             background: var(--bg-secondary);
             border: 1px solid var(--border-color);
@@ -296,7 +295,6 @@
             background: rgba(239, 68, 68, 0.1);
         }
 
-        /* Основная сетка */
         .admin-grid {
             display: grid;
             grid-template-columns: 320px 1fr;
@@ -710,7 +708,6 @@
             margin-top: 24px;
         }
 
-        /* Уведомления */
         .toast {
             position: fixed;
             bottom: 24px;
@@ -744,75 +741,13 @@
             color: var(--accent-danger);
         }
 
-        /* Инструкция */
-        .info-section {
-            background: var(--bg-secondary);
-            border: 1px solid var(--border-color);
-            border-radius: 16px;
-            padding: 20px;
-        }
-
-        .info-title {
-            font-size: 14px;
-            font-weight: 600;
-            color: var(--text-secondary);
-            margin-bottom: 16px;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-
-        .info-title i {
-            color: var(--accent-primary);
-        }
-
-        .info-list {
-            list-style: none;
-            padding: 0;
-        }
-
-        .info-list li {
-            color: var(--text-tertiary);
-            font-size: 13px;
-            margin-bottom: 10px;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-
-        .info-list li i {
-            color: var(--accent-warning);
-            font-size: 12px;
-        }
-
-        .info-list code {
-            background: var(--bg-tertiary);
-            padding: 4px 8px;
-            border-radius: 6px;
-            font-size: 12px;
-            color: var(--accent-secondary);
-        }
-
-        .warning-box {
-            background: rgba(251, 191, 36, 0.1);
-            border: 1px solid var(--accent-warning);
-            border-radius: 8px;
-            padding: 12px;
-            margin-top: 16px;
-            color: var(--text-secondary);
-            font-size: 13px;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-
         .warning-box i {
             color: var(--accent-warning);
         }
     </style>
 </head>
 <body>
-    <!-- Экран авторизации -->
+    <!-- Экран ввода пароля -->
     <div class="auth-screen" id="authScreen">
         <div class="auth-container">
             <div class="auth-header">
@@ -840,7 +775,7 @@
         <!-- Хедер -->
         <div class="admin-header">
             <h1>
-                <i class="fab fa-github"></i>
+                <img src="icons/logo.png" alt="logo" style="width:80px; height:40px;">
                 Admin Sample Panel
             </h1>
             <div class="admin-header-right">
@@ -858,7 +793,6 @@
             </div>
         </div>
 
-        <!-- Основная сетка -->
         <div class="admin-grid">
             <!-- Левая панель -->
             <div class="left-panel">
@@ -904,7 +838,6 @@
                     <div class="folder-list" id="folderList"></div>
                 </div>
 
-                <!-- CDN URL -->
                 <div class="panel-section">
                     <div class="section-title">
                         <i class="fas fa-link"></i>
@@ -918,7 +851,6 @@
 
             <!-- Правая панель -->
             <div class="right-panel">
-                <!-- Заголовок сэмплов -->
                 <div class="samples-header">
                     <div class="current-folder">
                         <i class="fas fa-folder-open"></i>
@@ -946,18 +878,6 @@
                 <div class="samples-grid" id="samplesGrid"></div>
             </div>
         </div>
-
-        <!-- Инструкция -->
-        <div class="info-section">
-            <div class="warning-box">
-                <i class="fas fa-exclamation-triangle"></i>
-                <div>
-                    <strong></strong> Файлы доступны по ссылкам:<br>
-                    <code>https://raw.githubusercontent.com/username/repo/branch/folder/file.wav</code>
-                </div>
-            </div>
-        </div>
-    </div>
 
     <!-- Модальное окно для создания папки -->
     <div class="modal" id="folderModal">
@@ -1011,7 +931,6 @@
         </div>
     </div>
 
-    <!-- Уведомление -->
     <div class="toast" id="toast">
         <i class="fas fa-check-circle"></i>
         <span id="toastMessage">Ссылка скопирована!</span>
@@ -1020,11 +939,9 @@
     <script>
     (function() {
         // ------------------------------ ПЕРЕМЕННЫЕ ------------------------------
-        // Пароль по умолчанию
         const DEFAULT_PASSWORD = 'admin123';
         let currentPassword = localStorage.getItem('adminPassword') || DEFAULT_PASSWORD;
 
-        // GitHub настройки
         let githubToken = '';
         let repoOwner = '';
         let repoName = '';
@@ -1034,7 +951,6 @@
         let files = [];
         let isConnected = false;
 
-        // DOM элементы
         const authScreen = document.getElementById('authScreen');
         const adminInterface = document.getElementById('adminInterface');
         const passwordInput = document.getElementById('passwordInput');
@@ -1064,8 +980,7 @@
         const changePasswordBtn = document.getElementById('changePasswordBtn');
         const cancelPasswordBtn = document.getElementById('cancelPasswordBtn');
 
-        // ------------------------------ АВТОРИЗАЦИЯ ------------------------------
-        // Проверяем, залогинен ли пользователь
+
         function checkAuth() {
             const isLoggedIn = localStorage.getItem('isLoggedIn') === 'true';
             if (isLoggedIn) {
@@ -1079,7 +994,6 @@
             }
         }
 
-        // Вход
         loginBtn.addEventListener('click', () => {
             const enteredPassword = passwordInput.value;
             if (enteredPassword === currentPassword) {
@@ -1089,21 +1003,18 @@
                 authError.classList.remove('show');
                 passwordInput.value = '';
 
-                // Загружаем настройки после входа
                 loadSettings();
             } else {
                 authError.classList.add('show');
             }
         });
 
-        // Вход по Enter
         passwordInput.addEventListener('keypress', (e) => {
             if (e.key === 'Enter') {
                 loginBtn.click();
             }
         });
 
-        // Смена пароля
         logoutBtn.addEventListener('click', () => {
             passwordModal.classList.add('show');
         });
@@ -1128,11 +1039,9 @@
                 return;
             }
 
-            // Сохраняем новый пароль
             currentPassword = newPass;
             localStorage.setItem('adminPassword', newPass);
 
-            // Очищаем поля
             currentPasswordInput.value = '';
             newPasswordInput.value = '';
             confirmPasswordInput.value = '';
@@ -1148,7 +1057,6 @@
             confirmPasswordInput.value = '';
         });
 
-        // Закрытие модальных окон по клику вне
         window.addEventListener('click', (e) => {
             if (e.target === folderModal) {
                 folderModal.classList.remove('show');
@@ -1158,7 +1066,6 @@
             }
         });
 
-        // ------------------------------ УВЕДОМЛЕНИЯ ------------------------------
         function showToast(message, type = 'success') {
             toastMessage.textContent = message;
             toast.className = 'toast show';
@@ -1171,7 +1078,6 @@
             }, 3000);
         }
 
-        // ------------------------------ GitHub НАСТРОЙКИ ------------------------------
         function loadSettings() {
             githubToken = localStorage.getItem('githubToken') || '';
             repoOwner = localStorage.getItem('repoOwner') || '';
@@ -1246,7 +1152,6 @@
             testConnection();
         });
 
-        // ------------------------------ ПАПКИ ------------------------------
         async function loadFolders() {
             if (!isConnected) return;
 
@@ -1264,7 +1169,6 @@
         function renderFolders() {
             folderList.innerHTML = '';
 
-            // Папка "Все сэмплы"
             const allFolder = document.createElement('div');
             allFolder.className = `folder-item ${currentFolder === '' ? 'active' : ''}`;
             allFolder.innerHTML = `
@@ -1279,7 +1183,6 @@
             });
             folderList.appendChild(allFolder);
 
-            // Папки из репозитория
             folders.forEach(folder => {
                 const div = document.createElement('div');
                 div.className = `folder-item ${currentFolder === folder ? 'active' : ''}`;
@@ -1318,7 +1221,7 @@
             }
 
             try {
-                const content = btoa(''); // пустой файл
+                const content = btoa('');
 
                 await githubRequest(`/repos/${repoOwner}/${repoName}/contents/${folderName}/.gitkeep`, {
                     method: 'PUT',
@@ -1339,7 +1242,6 @@
             }
         });
 
-        // ------------------------------ ФАЙЛЫ ------------------------------
         async function loadFiles() {
             if (!isConnected) return;
 
@@ -1407,7 +1309,6 @@
             loadFiles();
         });
 
-        // ------------------------------ ЗАГРУЗКА ФАЙЛОВ ------------------------------
         uploadBox.addEventListener('click', () => {
             if (!isConnected) {
                 showToast('Сначала подключитесь к GitHub', 'error');
@@ -1490,7 +1391,6 @@
             showToast('Файлы загружены!');
         }
 
-        // ------------------------------ ЗАПУСК ------------------------------
         checkAuth();
     })();
     </script>
